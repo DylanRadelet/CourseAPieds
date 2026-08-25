@@ -1,26 +1,181 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --cap-bg: #e9e9ee;
+  --cap-surface: #e9e9ee;
+  --cap-black: #0a0a0c;
+  --cap-white: #ffffff;
+  --cap-violet: #7d39eb;
+  --cap-violet-soft: #ede4fc;
+  --cap-lime: #c6ff33;
+  --cap-lime-soft: #eefccc;
+  --cap-text: #17171a;
+  --cap-muted: #6b6b74;
+  --shadow-dark: #c6c6ce;
+  --shadow-light: #ffffff;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--cap-bg);
+  --color-foreground: var(--cap-text);
+  --color-cap-black: var(--cap-black);
+  --color-cap-white: var(--cap-white);
+  --color-cap-violet: var(--cap-violet);
+  --color-cap-violet-soft: var(--cap-violet-soft);
+  --color-cap-lime: var(--cap-lime);
+  --color-cap-lime-soft: var(--cap-lime-soft);
+  --color-cap-muted: var(--cap-muted);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+body {
+  background-color: var(--cap-bg);
+  background-image: radial-gradient(circle, var(--shadow-dark) 1px, transparent 1px);
+  background-size: 22px 22px;
+  color: var(--cap-text);
+}
+
+/* ---- Neomorphism primitives ---- */
+/* Layered as components so Tailwind utilities (e.g. rounded-full) can
+   still override radius/shape when combined with these classes. */
+@layer components {
+  .neo {
+    background: var(--cap-surface);
+    border-radius: 22px;
+    box-shadow:
+      8px 8px 18px var(--shadow-dark),
+      -8px -8px 18px var(--shadow-light);
+  }
+
+  .neo-sm {
+    background: var(--cap-surface);
+    border-radius: 14px;
+    box-shadow:
+      4px 4px 10px var(--shadow-dark),
+      -4px -4px 10px var(--shadow-light);
+  }
+
+  .neo-inset {
+    background: var(--cap-surface);
+    border-radius: 16px;
+    box-shadow:
+      inset 4px 4px 9px var(--shadow-dark),
+      inset -4px -4px 9px var(--shadow-light);
+  }
+
+  .neo-btn {
+    background: var(--cap-surface);
+    border-radius: 16px;
+    box-shadow:
+      6px 6px 14px var(--shadow-dark),
+      -6px -6px 14px var(--shadow-light);
+    transition:
+      box-shadow 120ms ease,
+      transform 120ms ease;
+  }
+  .neo-btn:hover {
+    transform: translateY(-1px);
+  }
+  .neo-btn:active {
+    box-shadow:
+      inset 4px 4px 9px var(--shadow-dark),
+      inset -4px -4px 9px var(--shadow-light);
+    transform: translateY(0);
+  }
+  .neo-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .neo-btn-violet {
+    background: var(--cap-violet);
+    color: var(--cap-white);
+    border-radius: 16px;
+    box-shadow:
+      6px 6px 14px rgba(125, 57, 235, 0.35),
+      -6px -6px 14px var(--shadow-light);
+    transition:
+      box-shadow 120ms ease,
+      transform 120ms ease;
+  }
+  .neo-btn-violet:hover {
+    transform: translateY(-1px);
+  }
+  .neo-btn-violet:active {
+    box-shadow: inset 3px 3px 8px rgba(0, 0, 0, 0.35);
+    transform: translateY(0);
+  }
+  .neo-btn-violet:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .neo-btn-lime {
+    background: var(--cap-lime);
+    color: var(--cap-black);
+    border-radius: 16px;
+    box-shadow:
+      6px 6px 14px rgba(198, 255, 51, 0.35),
+      -6px -6px 14px var(--shadow-light);
+    transition:
+      box-shadow 120ms ease,
+      transform 120ms ease;
+  }
+  .neo-btn-lime:hover {
+    transform: translateY(-1px);
+  }
+  .neo-btn-lime:active {
+    box-shadow: inset 3px 3px 8px rgba(0, 0, 0, 0.25);
+    transform: translateY(0);
+  }
+
+  .neo-btn-danger {
+    background: #dc2626;
+    color: var(--cap-white);
+    border-radius: 16px;
+    box-shadow:
+      6px 6px 14px rgba(220, 38, 38, 0.35),
+      -6px -6px 14px var(--shadow-light);
+    transition:
+      box-shadow 120ms ease,
+      transform 120ms ease;
+  }
+  .neo-btn-danger:hover {
+    transform: translateY(-1px);
+  }
+  .neo-btn-danger:active {
+    box-shadow: inset 3px 3px 8px rgba(0, 0, 0, 0.35);
+    transform: translateY(0);
+  }
+  .neo-btn-danger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* Popups float over a dimmed backdrop, not the page's own bg — so the
+     dual light/dark neomorphic shadow (which reads as "raised" only against
+     a matching background) is swapped for a plain drop shadow, and the
+     corners get an asymmetric round (top-left/bottom-right bigger) instead
+     of the uniform radius used on in-page cards. */
+  .neo-modal {
+    background: var(--cap-surface);
+    border-radius: 34px 16px 34px 16px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.neo-scrollbar::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+.neo-scrollbar::-webkit-scrollbar-track {
+  background: var(--cap-bg);
+}
+.neo-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--shadow-dark);
+  border-radius: 10px;
 }
