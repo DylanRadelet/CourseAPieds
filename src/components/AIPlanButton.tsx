@@ -5,6 +5,8 @@ import { Loader2, Sparkles, X } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { NeoButton } from "@/components/ui/NeoButton";
+import { formatDistance } from "@/lib/format";
+import { formatMinutesToDuration } from "@/lib/pace";
 import type { Workout } from "@/lib/types";
 import type { ProposedSession } from "@/lib/ai/trainingPlan";
 
@@ -161,9 +163,11 @@ export function AIPlanButton({
                           </span>
                           {session.distance_km || session.duration_min ? (
                             <span className="text-[11px] font-semibold text-cap-violet shrink-0">
-                              {session.distance_km ? `${session.distance_km} km` : ""}
+                              {session.distance_km ? formatDistance(session.distance_km) : ""}
                               {session.distance_km && session.duration_min ? " · " : ""}
-                              {session.duration_min ? `${session.duration_min} min` : ""}
+                              {session.duration_min
+                                ? formatMinutesToDuration(session.duration_min)
+                                : ""}
                             </span>
                           ) : null}
                         </div>

@@ -1,21 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ConfirmDialog } from "./ConfirmDialog";
 
-export function DeleteRaceButton({ raceId, raceName }: { raceId: string; raceName: string }) {
-  const router = useRouter();
+export function DeleteIconButton({
+  confirmTitle,
+  confirmDescription,
+  onConfirm,
+}: {
+  confirmTitle: string;
+  confirmDescription: string;
+  onConfirm: () => Promise<void> | void;
+}) {
   const [confirming, setConfirming] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  async function handleDelete() {
+  async function handleConfirm() {
     setLoading(true);
-    await fetch(`/api/races/${raceId}`, { method: "DELETE" });
+    await onConfirm();
     setLoading(false);
     setConfirming(false);
-    router.refresh();
   }
 
   return (
@@ -24,19 +29,19 @@ export function DeleteRaceButton({ raceId, raceName }: { raceId: string; raceNam
         onClick={() => setConfirming(true)}
         className="neo-btn w-8 h-8 flex items-center justify-center text-cap-muted hover:text-red-600"
         title="Supprimer"
-        aria-label="Supprimer la course"
+        aria-label={confirmTitle}
       >
         <Trash2 size={14} strokeWidth={2.25} />
       </button>
 
       {confirming ? (
         <ConfirmDialog
-          title="Supprimer la course"
-          description={`"${raceName}" et tous ses entraînements seront définitivement supprimés.`}
+          title={confirmTitle}
+          description={confirmDescription}
           confirmLabel="Supprimer"
           danger
           loading={loading}
-          onConfirm={handleDelete}
+          onConfirm={handleConfirm}
           onCancel={() => setConfirming(false)}
         />
       ) : null}

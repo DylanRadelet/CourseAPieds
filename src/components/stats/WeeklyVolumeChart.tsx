@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { WeeklyVolumePoint } from "@/lib/stats";
 import { toDateKey } from "@/lib/weeks";
+import { formatDistance } from "@/lib/format";
 
 const CHART_HEIGHT = 160;
 const BAR_MAX_WIDTH = 24;
@@ -91,7 +92,7 @@ export function WeeklyVolumeChart({
 
                 {hovered === i ? (
                   <div className="absolute -top-9 left-1/2 -translate-x-1/2 neo-sm px-2 py-1 text-[11px] font-semibold text-cap-black whitespace-nowrap z-10">
-                    {point.done} / {point.planned} km
+                    {formatDistance(point.done)} / {formatDistance(point.planned)}
                   </div>
                 ) : null}
               </div>

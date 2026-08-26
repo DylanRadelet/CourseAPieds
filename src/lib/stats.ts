@@ -32,7 +32,10 @@ export function computeOverallStats(
   const doneWorkouts = workouts.filter((w) => w.done);
   const pastDueDone = pastDue.filter((w) => w.done);
 
-  const kmDone = doneWorkouts.reduce((sum, w) => sum + (w.distance_km ?? 0), 0);
+  const kmDone = doneWorkouts.reduce(
+    (sum, w) => sum + (w.actual_distance_km ?? w.distance_km ?? 0),
+    0
+  );
   const kmPlannedTotal = workouts.reduce((sum, w) => sum + (w.distance_km ?? 0), 0);
 
   const completedRaces = races.filter((r) => r.race_date < todayKey).length;
@@ -89,7 +92,7 @@ export function computeWeeklyVolume(workouts: Workout[], today: Date): WeeklyVol
     const weekKey = toDateKey(startOfWeek(workoutDate, { weekStartsOn: 1 }));
     const entry = byWeek.get(weekKey) ?? { planned: 0, done: 0 };
     entry.planned += w.distance_km ?? 0;
-    if (w.done) entry.done += w.distance_km ?? 0;
+    if (w.done) entry.done += w.actual_distance_km ?? w.distance_km ?? 0;
     byWeek.set(weekKey, entry);
   }
 

@@ -1,13 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Flag, StickyNote } from "lucide-react";
+import { Check, Flag } from "lucide-react";
 import { isSameDay, isToday } from "date-fns";
 import type { Workout } from "@/lib/types";
 import { buildWeeks, formatDayLabel, formatWeekLabel, toDateKey } from "@/lib/weeks";
+import { formatDistance } from "@/lib/format";
 import { WorkoutModal } from "./WorkoutModal";
 import { AIPlanButton } from "./AIPlanButton";
-import { NotesViewerModal } from "./NotesViewerModal";
+import { NotesIndicator } from "@/components/ui/NotesIndicator";
 
 const DAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 const GRID_COLS = "grid-cols-[92px_repeat(7,minmax(96px,1fr))]";
@@ -39,7 +40,6 @@ export function WeekGrid({
     return map;
   });
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [notesViewDate, setNotesViewDate] = useState<Date | null>(null);
 
   function handleSaved(workout: Workout | null, dateKey: string) {
     setWorkoutsByDate((prev) => {
@@ -103,7 +103,13 @@ export function WeekGrid({
                   const isRaceDay = isSameDay(day, raceDate);
                   const today = isToday(day);
 
-                  const hasNotes = Boolean(workout?.notes || workout?.actual_notes);
+                  const combinedNotes =
+                    [
+                      workout?.notes ? `Plan :\n${workout.notes}` : null,
+                      workout?.actual_notes ? `Réalisé :\n${workout.actual_notes}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join("\n\n") || null;
 
                   return (
                     <button
@@ -119,29 +125,14 @@ export function WeekGrid({
                         </span>
                       ) : null}
 
-                      {hasNotes ? (
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setNotesViewDate(day);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              setNotesViewDate(day);
-                            }
-                          }}
-                          className={`absolute top-1.5 text-cap-violet hover:text-cap-black ${
-                            workout?.done ? "right-6" : "right-1.5"
-                          }`}
-                          aria-label="Voir les notes"
-                        >
-                          <StickyNote size={13} strokeWidth={2.25} />
-                        </span>
-                      ) : null}
+                      <NotesIndicator
+                        date={day}
+                        title={workout?.title}
+                        notes={combinedNotes}
+                        className={`absolute top-1.5 text-cap-violet hover:text-cap-black ${
+                          workout?.done ? "right-6" : "right-1.5"
+                        }`}
+                      />
 
                       <span
                         className={`text-[11px] font-semibold ${
@@ -170,11 +161,11 @@ export function WeekGrid({
 
                       {workout?.done && workout?.actual_distance_km ? (
                         <span className="text-[10px] font-semibold text-cap-lime-soft bg-cap-black rounded px-1 mt-auto">
-                          {workout.actual_distance_km} km réels
+                          {formatDistance(workout.actual_distance_km)} réels
                         </span>
                       ) : workout?.distance_km ? (
                         <span className="text-[10px] font-semibold text-cap-violet mt-auto">
-                          {workout.distance_km} km
+                          {formatDistance(workout.distance_km)}
                         </span>
                       ) : null}
                     </button>
@@ -195,26 +186,6 @@ export function WeekGrid({
           onSaved={handleSaved}
         />
       ) : null}
-
-      {notesViewDate
-        ? (() => {
-            const workout = workoutsByDate[toDateKey(notesViewDate)];
-            const combined = [
-              workout?.notes ? `Plan :\n${workout.notes}` : null,
-              workout?.actual_notes ? `Réalisé :\n${workout.actual_notes}` : null,
-            ]
-              .filter(Boolean)
-              .join("\n\n");
-            return (
-              <NotesViewerModal
-                date={notesViewDate}
-                title={workout?.title ?? null}
-                notes={combined}
-                onClose={() => setNotesViewDate(null)}
-              />
-            );
-          })()
-        : null}
     </div>
   );
 }

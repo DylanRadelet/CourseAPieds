@@ -7,6 +7,7 @@ import { ResultsTimeline } from "@/components/stats/ResultsTimeline";
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { computeOverallStats, computeWeeklyVolume } from "@/lib/stats";
 import { toDateKey } from "@/lib/weeks";
+import { formatDistance } from "@/lib/format";
 import type { Race, Workout } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -48,7 +49,7 @@ export default async function StatsPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatTile
             label="Km parcourus"
-            value={`${stats.kmDone}`}
+            value={formatDistance(stats.kmDone)}
             icon={<Route size={14} strokeWidth={2.25} />}
           />
           <StatTile

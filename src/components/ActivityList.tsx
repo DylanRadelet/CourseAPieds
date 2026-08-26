@@ -4,51 +4,59 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { CalendarDays, Heart, Mountain, Timer, Trash2 } from "lucide-react";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { CalendarDays, Heart, Mountain, Pencil, Timer } from "lucide-react";
+import { RecordCard } from "@/components/ui/RecordCard";
+import { DeleteIconButton } from "@/components/ui/DeleteIconButton";
+import { NotesIndicator } from "@/components/ui/NotesIndicator";
+import { EditActivityModal } from "@/components/EditActivityModal";
 import { computePace, formatMinutesToDuration } from "@/lib/pace";
+import { formatDistance } from "@/lib/format";
 import type { Activity } from "@/lib/types";
 
-function ActivityCard({ activity }: { activity: Activity }) {
+function ActivityCard({ activity: initial }: { activity: Activity }) {
   const router = useRouter();
-  const [confirming, setConfirming] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [activity, setActivity] = useState(initial);
+  const [editing, setEditing] = useState(false);
 
   const pace = computePace(activity.distance_km, activity.duration_min);
-
-  async function handleDelete() {
-    setLoading(true);
-    await fetch(`/api/activities/${activity.id}`, { method: "DELETE" });
-    setLoading(false);
-    setConfirming(false);
-    router.refresh();
-  }
+  const activityDate = new Date(`${activity.activity_date}T00:00:00`);
 
   return (
-    <div className="neo p-5 relative flex flex-col gap-2">
-      <button
-        onClick={() => setConfirming(true)}
-        className="neo-btn absolute top-4 right-4 w-8 h-8 flex items-center justify-center text-cap-muted hover:text-red-600"
-        title="Supprimer"
-        aria-label="Supprimer cette course"
-      >
-        <Trash2 size={14} strokeWidth={2.25} />
-      </button>
-
-      <div className="pr-10">
-        <p className="text-base font-bold text-cap-black">
-          {activity.title || "Course"}
-        </p>
-        <span className="flex items-center gap-1.5 text-xs text-cap-muted mt-0.5">
-          <CalendarDays size={12} strokeWidth={2.25} />
-          {format(new Date(`${activity.activity_date}T00:00:00`), "EEEE d MMMM yyyy", {
-            locale: fr,
-          })}
-        </span>
-      </div>
-
+    <RecordCard
+      header={
+        <>
+          <p className="text-base font-bold text-cap-black">{activity.title || "Course"}</p>
+          <span className="flex items-center gap-1.5 text-xs text-cap-muted mt-0.5">
+            <CalendarDays size={12} strokeWidth={2.25} />
+            {format(activityDate, "EEEE d MMMM yyyy", { locale: fr })}
+          </span>
+        </>
+      }
+      actions={
+        <>
+          <button
+            onClick={() => setEditing(true)}
+            className="neo-btn w-8 h-8 flex items-center justify-center text-cap-muted hover:text-cap-violet"
+            title="Modifier"
+            aria-label="Modifier cette course"
+          >
+            <Pencil size={14} strokeWidth={2.25} />
+          </button>
+          <DeleteIconButton
+            confirmTitle="Supprimer cette course"
+            confirmDescription="Cette entrée d'historique sera définitivement supprimée."
+            onConfirm={async () => {
+              await fetch(`/api/activities/${activity.id}`, { method: "DELETE" });
+              router.refresh();
+            }}
+          />
+        </>
+      }
+    >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-cap-black mt-1">
-        {activity.distance_km ? <span className="font-semibold">{activity.distance_km} km</span> : null}
+        {activity.distance_km ? (
+          <span className="font-semibold">{formatDistance(activity.distance_km)}</span>
+        ) : null}
         {activity.duration_min ? <span>{formatMinutesToDuration(activity.duration_min)}</span> : null}
         {pace ? (
           <span className="flex items-center gap-1 text-cap-violet font-semibold">
@@ -68,24 +76,20 @@ function ActivityCard({ activity }: { activity: Activity }) {
             D+ {activity.elevation_gain_m} m
           </span>
         ) : null}
+        <NotesIndicator date={activityDate} title={activity.title} notes={activity.notes} />
       </div>
 
-      {activity.notes ? (
-        <p className="text-xs text-cap-muted whitespace-pre-wrap mt-1">{activity.notes}</p>
-      ) : null}
-
-      {confirming ? (
-        <ConfirmDialog
-          title="Supprimer cette course"
-          description="Cette entrée d'historique sera définitivement supprimée."
-          confirmLabel="Supprimer"
-          danger
-          loading={loading}
-          onConfirm={handleDelete}
-          onCancel={() => setConfirming(false)}
+      {editing ? (
+        <EditActivityModal
+          activity={activity}
+          onClose={() => setEditing(false)}
+          onSaved={(updated) => {
+            setActivity(updated);
+            setEditing(false);
+          }}
         />
       ) : null}
-    </div>
+    </RecordCard>
   );
 }
 
