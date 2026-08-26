@@ -2,6 +2,7 @@ import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { getAnthropicClient } from "@/lib/anthropic";
 import { computePace, formatMinutesToDuration } from "@/lib/pace";
+import type { LevelIndex } from "@/lib/level";
 import type { Activity, Profile, Race, Workout } from "@/lib/types";
 
 export type CompletedWorkout = Workout & { raceName: string };
@@ -76,6 +77,7 @@ function formatCompletedWorkoutLine(workout: CompletedWorkout): string {
 
 function buildUserPrompt(input: {
   profile: Profile | null;
+  levelIndex: LevelIndex | null;
   race: Race;
   previousRace: Pick<Race, "name" | "race_date"> | null;
   pastRaces: Race[];
@@ -83,8 +85,16 @@ function buildUserPrompt(input: {
   completedWorkouts: CompletedWorkout[];
   emptyDates: string[];
 }): string {
-  const { profile, race, previousRace, pastRaces, activities, completedWorkouts, emptyDates } =
-    input;
+  const {
+    profile,
+    levelIndex,
+    race,
+    previousRace,
+    pastRaces,
+    activities,
+    completedWorkouts,
+    emptyDates,
+  } = input;
 
   const lines: string[] = [];
 
@@ -113,6 +123,23 @@ function buildUserPrompt(input: {
     if (profile.notes) lines.push(`Infos complémentaires: ${profile.notes}`);
   } else {
     lines.push("Aucun profil renseigné — reste générique et prudent.");
+  }
+
+  if (levelIndex) {
+    lines.push("");
+    lines.push("## Indice de niveau calculé (donnée objective, 0-1000, méthode VDOT)");
+    lines.push(
+      `${levelIndex.score}/1000 (VDOT ≈ ${levelIndex.vdot}) — calculé à partir de ${
+        levelIndex.fromRace ? "la course" : "la sortie"
+      } "${levelIndex.effort.label}" du ${levelIndex.effort.date} (${levelIndex.effort.distanceKm} km en ${
+        levelIndex.effort.durationMin
+      } min).`
+    );
+    lines.push(
+      levelIndex.fromRace
+        ? "Cette donnée vient d'une vraie course — fais-lui confiance en priorité sur le niveau auto-déclaré s'ils divergent."
+        : "Cette donnée vient d'une sortie d'entraînement (pas d'un effort maximal) — elle sous-estime probablement le niveau réel, utilise-la comme plancher plutôt que comme valeur exacte."
+    );
   }
 
   lines.push("");
@@ -550,6 +577,7 @@ Le résumé doit expliquer en 2 à 3 phrases :
 
 export async function generateTrainingPlan(input: {
   profile: Profile | null;
+  levelIndex: LevelIndex | null;
   race: Race;
   previousRace: Pick<Race, "name" | "race_date"> | null;
   pastRaces: Race[];

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { buildWeeks, toDateKey } from "@/lib/weeks";
 import { generateTrainingPlan, type CompletedWorkout } from "@/lib/ai/trainingPlan";
+import { computeLevelIndex } from "@/lib/level";
 import type { Activity, Profile, Race, Workout } from "@/lib/types";
 
 type Context = { params: Promise<{ id: string }> };
@@ -82,9 +83,16 @@ export async function POST(_request: Request, context: Context) {
     (completedWorkoutsRaw as (Workout & { race: { name: string } | null })[]) ?? []
   ).map((w) => ({ ...w, raceName: w.race?.name ?? "Course" }));
 
+  const levelIndex = computeLevelIndex(
+    orderedRaces,
+    (activities as Activity[]) ?? [],
+    completedWorkouts
+  );
+
   try {
     const plan = await generateTrainingPlan({
       profile: (profile as Profile) ?? null,
+      levelIndex,
       race: typedRace,
       previousRace: previousRace
         ? { name: previousRace.name, race_date: previousRace.race_date }

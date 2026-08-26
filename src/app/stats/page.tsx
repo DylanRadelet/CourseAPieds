@@ -4,27 +4,36 @@ import { Sidebar } from "@/components/Sidebar";
 import { StatTile } from "@/components/stats/StatTile";
 import { WeeklyVolumeChart } from "@/components/stats/WeeklyVolumeChart";
 import { ResultsTimeline } from "@/components/stats/ResultsTimeline";
+import { LevelIndexCard } from "@/components/stats/LevelIndexCard";
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { computeOverallStats, computeWeeklyVolume } from "@/lib/stats";
+import { computeLevelIndex } from "@/lib/level";
 import { toDateKey } from "@/lib/weeks";
 import { formatDistance } from "@/lib/format";
-import type { Race, Workout } from "@/lib/types";
+import type { Activity, Race, Workout } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function StatsPage() {
   const supabase = getSupabaseServerClient();
-  const [{ data: races }, { data: workouts }] = await Promise.all([
+  const [{ data: races }, { data: workouts }, { data: activities }] = await Promise.all([
     supabase.from("CAP_races").select("*").order("race_date", { ascending: true }),
     supabase.from("CAP_workouts").select("*"),
+    supabase.from("CAP_activities").select("*"),
   ]);
 
   const typedRaces = (races as Race[]) ?? [];
   const typedWorkouts = (workouts as Workout[]) ?? [];
+  const typedActivities = (activities as Activity[]) ?? [];
   const today = new Date();
   const todayKey = toDateKey(today);
 
   const stats = computeOverallStats(typedRaces, typedWorkouts, today);
+  const levelIndex = computeLevelIndex(
+    typedRaces,
+    typedActivities,
+    typedWorkouts.filter((w) => w.done)
+  );
   const weeklyVolume = computeWeeklyVolume(typedWorkouts, today);
   const pastRaces = typedRaces
     .filter((r) => r.race_date < todayKey)
@@ -45,6 +54,8 @@ export default async function StatsPage() {
             Ton volume d&apos;entraînement et l&apos;évolution de tes courses.
           </p>
         </div>
+
+        <LevelIndexCard levelIndex={levelIndex} />
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatTile
