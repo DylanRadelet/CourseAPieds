@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, Footprints, Home, User } from "lucide-react";
+import { BarChart3, Footprints, History, Home, User } from "lucide-react";
 import { NavIconButton } from "./NavIconButton";
 import { SidebarLogoutButton } from "./SidebarLogoutButton";
 import { getSupabaseServerClient } from "@/lib/supabase";
@@ -57,6 +57,11 @@ export async function Sidebar() {
           label="Accueil"
         />
         <NavIconButton
+          href="/historique"
+          icon={<History size={16} strokeWidth={2.25} />}
+          label="Historique"
+        />
+        <NavIconButton
           href="/stats"
           icon={<BarChart3 size={16} strokeWidth={2.25} />}
           label="Statistiques"
@@ -78,6 +83,11 @@ export async function Sidebar() {
           href="/"
           icon={<Home size={16} strokeWidth={2.25} />}
           label="Accueil"
+        />
+        <NavIconButton
+          href="/historique"
+          icon={<History size={16} strokeWidth={2.25} />}
+          label="Historique"
         />
         <NavIconButton
           href="/stats"

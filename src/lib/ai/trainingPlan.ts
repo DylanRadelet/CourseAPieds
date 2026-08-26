@@ -1,7 +1,10 @@
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { getAnthropicClient } from "@/lib/anthropic";
-import type { Profile, Race } from "@/lib/types";
+import { computePace, formatMinutesToDuration } from "@/lib/pace";
+import type { Activity, Profile, Race, Workout } from "@/lib/types";
+
+export type CompletedWorkout = Workout & { raceName: string };
 
 const ProposedSessionSchema = z.object({
   date: z.string().describe("Date de la séance au format YYYY-MM-DD"),
@@ -37,14 +40,51 @@ function formatRaceHistoryLine(race: Race): string {
   return parts.join(" — ");
 }
 
+function formatActivityLine(activity: Activity): string {
+  const parts = [`- ${activity.activity_date}`];
+  if (activity.title) parts.push(activity.title);
+  if (activity.distance_km) parts.push(`${activity.distance_km} km`);
+  if (activity.duration_min) parts.push(formatMinutesToDuration(activity.duration_min));
+  const pace = computePace(activity.distance_km, activity.duration_min);
+  if (pace) parts.push(`allure ${pace}`);
+  if (activity.avg_heart_rate) parts.push(`FC moy ${activity.avg_heart_rate} bpm`);
+  if (activity.elevation_gain_m) parts.push(`D+ ${activity.elevation_gain_m}m`);
+  if (activity.notes) parts.push(`notes: ${activity.notes}`);
+  return parts.join(" — ");
+}
+
+function formatCompletedWorkoutLine(workout: CompletedWorkout): string {
+  const planned = [workout.title, workout.distance_km ? `${workout.distance_km} km` : null]
+    .filter(Boolean)
+    .join(", ");
+
+  const actualParts: string[] = [];
+  if (workout.actual_distance_km) actualParts.push(`${workout.actual_distance_km} km`);
+  if (workout.actual_duration_min) {
+    actualParts.push(formatMinutesToDuration(workout.actual_duration_min));
+  }
+  const pace = computePace(workout.actual_distance_km, workout.actual_duration_min);
+  if (pace) actualParts.push(`allure ${pace}`);
+  if (workout.actual_avg_heart_rate) actualParts.push(`FC moy ${workout.actual_avg_heart_rate} bpm`);
+  if (workout.actual_elevation_gain_m) actualParts.push(`D+ ${workout.actual_elevation_gain_m}m`);
+  if (workout.actual_notes) actualParts.push(`notes: ${workout.actual_notes}`);
+
+  const actual = actualParts.length ? actualParts.join(", ") : "réalisé sans détails";
+
+  return `- ${workout.workout_date} (${workout.raceName}) — prévu: ${planned || "séance"} — réalisé: ${actual}`;
+}
+
 function buildUserPrompt(input: {
   profile: Profile | null;
   race: Race;
   previousRace: Pick<Race, "name" | "race_date"> | null;
   pastRaces: Race[];
+  activities: Activity[];
+  completedWorkouts: CompletedWorkout[];
   emptyDates: string[];
 }): string {
-  const { profile, race, previousRace, pastRaces, emptyDates } = input;
+  const { profile, race, previousRace, pastRaces, activities, completedWorkouts, emptyDates } =
+    input;
 
   const lines: string[] = [];
 
@@ -97,6 +137,29 @@ function buildUserPrompt(input: {
     lines.push("");
     lines.push("## Historique de courses (plus récentes en premier)");
     for (const r of pastRaces) lines.push(formatRaceHistoryLine(r));
+  }
+
+  if (activities.length) {
+    lines.push("");
+    lines.push(
+      "## Historique manuel (saisi par le coureur, ex: Garmin — preuve fiable de son niveau actuel, plus récent en premier)"
+    );
+    for (const a of activities) lines.push(formatActivityLine(a));
+  }
+
+  if (completedWorkouts.length) {
+    lines.push("");
+    lines.push(
+      "## Séances déjà réalisées dans l'app, toutes courses confondues (prévu vs réalisé, plus récent en premier)"
+    );
+    for (const w of completedWorkouts) lines.push(formatCompletedWorkoutLine(w));
+  }
+
+  if (!activities.length && !completedWorkouts.length && !pastRaces.length) {
+    lines.push("");
+    lines.push(
+      "## Historique\nAucun historique disponible (ni course terminée, ni séance réalisée, ni entrée manuelle) — reste prudent, n'invente aucune performance passée."
+    );
   }
 
   lines.push("");
@@ -490,6 +553,8 @@ export async function generateTrainingPlan(input: {
   race: Race;
   previousRace: Pick<Race, "name" | "race_date"> | null;
   pastRaces: Race[];
+  activities: Activity[];
+  completedWorkouts: CompletedWorkout[];
   emptyDates: string[];
 }): Promise<GeneratedTrainingPlan> {
   if (input.emptyDates.length === 0) {

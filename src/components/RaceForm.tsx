@@ -51,11 +51,7 @@ export function RaceForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="neo p-6 space-y-4">
-      <h2 className="text-sm font-bold uppercase tracking-wide text-cap-black">
-        Nouvelle course
-      </h2>
-
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1.5">
         <label className="text-xs font-medium text-cap-muted">Nom</label>
         <NeoInput

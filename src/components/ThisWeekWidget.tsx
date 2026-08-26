@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { addDays, isToday, startOfWeek } from "date-fns";
-import { CalendarRange, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { formatDayLabel, toDateKey } from "@/lib/weeks";
 import type { Workout } from "@/lib/types";
@@ -25,15 +25,7 @@ export async function ThisWeekWidget() {
   }
 
   return (
-    <div className="neo p-4 sm:p-6">
-      <div className="flex items-center gap-1.5 mb-4">
-        <CalendarRange size={15} strokeWidth={2.25} className="text-cap-violet" />
-        <h2 className="text-sm font-bold uppercase tracking-wide text-cap-black">
-          Cette semaine
-        </h2>
-      </div>
-
-      <div className="overflow-x-auto neo-scrollbar pb-1">
+    <div className="overflow-x-auto neo-scrollbar pb-1">
       <div className="flex gap-2 min-w-[700px] sm:min-w-0 sm:grid sm:grid-cols-7">
         {weekDays.map((day) => {
           const dateKey = toDateKey(day);
@@ -90,7 +82,6 @@ export async function ThisWeekWidget() {
             </div>
           );
         })}
-      </div>
       </div>
     </div>
   );

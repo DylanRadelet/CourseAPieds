@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { buildWeeks, toDateKey } from "@/lib/weeks";
-import { generateTrainingPlan } from "@/lib/ai/trainingPlan";
-import type { Profile, Race, Workout } from "@/lib/types";
+import { generateTrainingPlan, type CompletedWorkout } from "@/lib/ai/trainingPlan";
+import type { Activity, Profile, Race, Workout } from "@/lib/types";
 
 type Context = { params: Promise<{ id: string }> };
 
 const PROFILE_ID = "00000000-0000-0000-0000-000000000001";
 const PAST_RACES_LIMIT = 8;
+const ACTIVITIES_LIMIT = 15;
+const COMPLETED_WORKOUTS_LIMIT = 20;
 
 export async function POST(_request: Request, context: Context) {
   const { id } = await context.params;
@@ -18,19 +20,36 @@ export async function POST(_request: Request, context: Context) {
     { data: allRaces, error: allRacesError },
     { data: workouts, error: workoutsError },
     { data: profile, error: profileError },
+    { data: activities, error: activitiesError },
+    { data: completedWorkoutsRaw, error: completedWorkoutsError },
   ] = await Promise.all([
     supabase.from("CAP_races").select("*").eq("id", id).single(),
     supabase.from("CAP_races").select("*").order("race_date", { ascending: true }),
     supabase.from("CAP_workouts").select("workout_date").eq("race_id", id),
     supabase.from("CAP_profile").select("*").eq("id", PROFILE_ID).maybeSingle(),
+    supabase
+      .from("CAP_activities")
+      .select("*")
+      .order("activity_date", { ascending: false })
+      .limit(ACTIVITIES_LIMIT),
+    supabase
+      .from("CAP_workouts")
+      .select("*, race:CAP_races(name)")
+      .eq("done", true)
+      .order("workout_date", { ascending: false })
+      .limit(COMPLETED_WORKOUTS_LIMIT),
   ]);
 
   if (raceError || !race) {
     return NextResponse.json({ error: "Course introuvable." }, { status: 404 });
   }
-  if (allRacesError || workoutsError || profileError) {
+  if (allRacesError || workoutsError || profileError || activitiesError || completedWorkoutsError) {
     const message =
-      allRacesError?.message || workoutsError?.message || profileError?.message;
+      allRacesError?.message ||
+      workoutsError?.message ||
+      profileError?.message ||
+      activitiesError?.message ||
+      completedWorkoutsError?.message;
     return NextResponse.json({ error: message }, { status: 500 });
   }
 
@@ -59,6 +78,10 @@ export async function POST(_request: Request, context: Context) {
     .map((day) => toDateKey(day))
     .filter((dateKey) => !filledDates.has(dateKey));
 
+  const completedWorkouts: CompletedWorkout[] = (
+    (completedWorkoutsRaw as (Workout & { race: { name: string } | null })[]) ?? []
+  ).map((w) => ({ ...w, raceName: w.race?.name ?? "Course" }));
+
   try {
     const plan = await generateTrainingPlan({
       profile: (profile as Profile) ?? null,
@@ -67,6 +90,8 @@ export async function POST(_request: Request, context: Context) {
         ? { name: previousRace.name, race_date: previousRace.race_date }
         : null,
       pastRaces,
+      activities: (activities as Activity[]) ?? [],
+      completedWorkouts,
       emptyDates,
     });
     return NextResponse.json(plan);

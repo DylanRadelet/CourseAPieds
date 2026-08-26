@@ -21,8 +21,25 @@ export type Workout = {
   distance_km: number | null;
   duration_min: number | null;
   done: boolean;
+  actual_distance_km: number | null;
+  actual_duration_min: number | null;
+  actual_avg_heart_rate: number | null;
+  actual_elevation_gain_m: number | null;
+  actual_notes: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type Activity = {
+  id: string;
+  activity_date: string; // YYYY-MM-DD
+  title: string | null;
+  distance_km: number | null;
+  duration_min: number | null;
+  avg_heart_rate: number | null;
+  elevation_gain_m: number | null;
+  notes: string | null;
+  created_at: string;
 };
 
 export const TERRAIN_OPTIONS = [

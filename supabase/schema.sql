@@ -54,6 +54,32 @@ create table if not exists "CAP_workouts" (
 
 create index if not exists "CAP_workouts_race_id_idx" on "CAP_workouts" (race_id);
 
+-- Actual performance logged when a planned session is marked done (the
+-- "flip card" result entry) — separate from the plan (title/distance_km/
+-- duration_min/notes above) so prévu vs réalisé stays comparable.
+alter table "CAP_workouts" add column if not exists actual_distance_km numeric;
+alter table "CAP_workouts" add column if not exists actual_duration_min numeric;
+alter table "CAP_workouts" add column if not exists actual_avg_heart_rate integer;
+alter table "CAP_workouts" add column if not exists actual_elevation_gain_m integer;
+alter table "CAP_workouts" add column if not exists actual_notes text;
+
+-- Manual training history (e.g. copied over from Garmin) — gives the AI
+-- verifiable proof of current fitness even with zero races completed
+-- inside the app yet.
+create table if not exists "CAP_activities" (
+  id uuid primary key default gen_random_uuid(),
+  activity_date date not null,
+  title text,
+  distance_km numeric,
+  duration_min numeric,
+  avg_heart_rate integer,
+  elevation_gain_m integer,
+  notes text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists "CAP_activities_date_idx" on "CAP_activities" (activity_date);
+
 -- Row Level Security is left disabled on purpose: this app is a single-user
 -- tool gated by an application-level password (see src/lib/auth.ts) and
 -- talks to Supabase with the service role key from the server only.

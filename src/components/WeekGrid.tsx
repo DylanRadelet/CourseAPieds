@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Flag } from "lucide-react";
+import { Check, Flag, StickyNote } from "lucide-react";
 import { isSameDay, isToday } from "date-fns";
 import type { Workout } from "@/lib/types";
 import { buildWeeks, formatDayLabel, formatWeekLabel, toDateKey } from "@/lib/weeks";
 import { WorkoutModal } from "./WorkoutModal";
 import { AIPlanButton } from "./AIPlanButton";
+import { NotesViewerModal } from "./NotesViewerModal";
 
 const DAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 const GRID_COLS = "grid-cols-[92px_repeat(7,minmax(96px,1fr))]";
@@ -38,6 +39,7 @@ export function WeekGrid({
     return map;
   });
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [notesViewDate, setNotesViewDate] = useState<Date | null>(null);
 
   function handleSaved(workout: Workout | null, dateKey: string) {
     setWorkoutsByDate((prev) => {
@@ -101,6 +103,8 @@ export function WeekGrid({
                   const isRaceDay = isSameDay(day, raceDate);
                   const today = isToday(day);
 
+                  const hasNotes = Boolean(workout?.notes || workout?.actual_notes);
+
                   return (
                     <button
                       key={dateKey}
@@ -109,6 +113,36 @@ export function WeekGrid({
                         isRaceDay ? "ring-2 ring-cap-violet" : ""
                       }`}
                     >
+                      {workout?.done ? (
+                        <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-cap-lime flex items-center justify-center">
+                          <Check size={10} strokeWidth={3} className="text-cap-black" />
+                        </span>
+                      ) : null}
+
+                      {hasNotes ? (
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setNotesViewDate(day);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              setNotesViewDate(day);
+                            }
+                          }}
+                          className={`absolute top-1.5 text-cap-violet hover:text-cap-black ${
+                            workout?.done ? "right-6" : "right-1.5"
+                          }`}
+                          aria-label="Voir les notes"
+                        >
+                          <StickyNote size={13} strokeWidth={2.25} />
+                        </span>
+                      ) : null}
+
                       <span
                         className={`text-[11px] font-semibold ${
                           today ? "text-cap-violet" : "text-cap-muted"
@@ -134,7 +168,11 @@ export function WeekGrid({
                         </span>
                       ) : null}
 
-                      {workout?.distance_km ? (
+                      {workout?.done && workout?.actual_distance_km ? (
+                        <span className="text-[10px] font-semibold text-cap-lime-soft bg-cap-black rounded px-1 mt-auto">
+                          {workout.actual_distance_km} km réels
+                        </span>
+                      ) : workout?.distance_km ? (
                         <span className="text-[10px] font-semibold text-cap-violet mt-auto">
                           {workout.distance_km} km
                         </span>
@@ -157,6 +195,26 @@ export function WeekGrid({
           onSaved={handleSaved}
         />
       ) : null}
+
+      {notesViewDate
+        ? (() => {
+            const workout = workoutsByDate[toDateKey(notesViewDate)];
+            const combined = [
+              workout?.notes ? `Plan :\n${workout.notes}` : null,
+              workout?.actual_notes ? `Réalisé :\n${workout.actual_notes}` : null,
+            ]
+              .filter(Boolean)
+              .join("\n\n");
+            return (
+              <NotesViewerModal
+                date={notesViewDate}
+                title={workout?.title ?? null}
+                notes={combined}
+                onClose={() => setNotesViewDate(null)}
+              />
+            );
+          })()
+        : null}
     </div>
   );
 }
