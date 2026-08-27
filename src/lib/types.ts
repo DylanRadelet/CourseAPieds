@@ -9,6 +9,8 @@ export type Race = {
   result_rank: string | null;
   result_feeling: number | null; // 1-5
   result_notes: string | null;
+  ai_report: string | null;
+  ai_report_generated_at: string | null;
   created_at: string;
 };
 

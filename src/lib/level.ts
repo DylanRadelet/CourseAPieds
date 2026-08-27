@@ -6,9 +6,13 @@ import type { Activity, Race, Workout } from "./types";
  * Index. Built on Daniels & Gilbert's VDOT formula (the same math behind
  * most public running pace/VO2max calculators): a race-effort's distance
  * and time convert to a VO2max-equivalent number, which we then rescale to
- * 0-1000. Real races are trusted over training data — training paces are
- * run comfortably below max effort, so they systematically understate true
- * fitness; a race time is the closest thing to a maximal-effort test we have.
+ * 0-1000.
+ *
+ * Training paces are run comfortably below max effort, so an index built
+ * from training data alone systematically understates true fitness. We
+ * compute both a training-based estimate and a race-based estimate
+ * separately (rather than one overriding the other) so the gap between
+ * "what training suggests" and "what a real race proved" stays visible.
  */
 
 const VDOT_FLOOR = 20; // ~ a brand new beginner
@@ -43,6 +47,13 @@ function estimateVdot(distanceKm: number, durationMin: number): number {
   return vo2 / percentMax;
 }
 
+/** Score + VDOT for one known effort, independent of any history — used to
+ * grade a single race result on its own right after it's logged. */
+export function scoreEffort(distanceKm: number, durationMin: number) {
+  const vdot = estimateVdot(distanceKm, durationMin);
+  return { score: vdotToScore(vdot), vdot: Math.round(vdot * 10) / 10 };
+}
+
 function vdotToScore(vdot: number): number {
   const clamped = Math.max(VDOT_FLOOR, Math.min(VDOT_CEILING, vdot));
   return Math.round(((clamped - VDOT_FLOOR) / (VDOT_CEILING - VDOT_FLOOR)) * 1000);
@@ -60,7 +71,6 @@ export type LevelIndex = {
   score: number;
   vdot: number;
   effort: LevelEffort;
-  fromRace: boolean;
 };
 
 function bestEffort(efforts: LevelEffort[]): LevelIndex | null {
@@ -75,24 +85,26 @@ function bestEffort(efforts: LevelEffort[]): LevelIndex | null {
     score: vdotToScore(best.vdot),
     vdot: Math.round(best.vdot * 10) / 10,
     effort: best.effort,
-    fromRace: best.effort.source === "race",
   };
 }
+
+export type LevelIndexResult = {
+  training: LevelIndex | null;
+  race: LevelIndex | null;
+};
 
 export function computeLevelIndex(
   races: Race[],
   activities: Activity[],
   completedWorkouts: Workout[]
-): LevelIndex | null {
+): LevelIndexResult {
   const raceEfforts: LevelEffort[] = races.flatMap((r) => {
     const km = parseDistanceLabelToKm(r.distance_label);
     const min = r.result_time ? parseDurationToMinutes(r.result_time) : null;
-    return km && min ? [{ date: r.race_date, distanceKm: km, durationMin: min, label: r.name, source: "race" as const }] : [];
+    return km && min
+      ? [{ date: r.race_date, distanceKm: km, durationMin: min, label: r.name, source: "race" as const }]
+      : [];
   });
-
-  // Races are a true maximal-effort test — prefer them exclusively when available.
-  const fromRaces = bestEffort(raceEfforts);
-  if (fromRaces) return fromRaces;
 
   const activityEfforts: LevelEffort[] = activities.flatMap((a) =>
     a.distance_km && a.duration_min
@@ -122,5 +134,42 @@ export function computeLevelIndex(
       : []
   );
 
-  return bestEffort([...activityEfforts, ...workoutEfforts]);
+  return {
+    training: bestEffort([...activityEfforts, ...workoutEfforts]),
+    race: bestEffort(raceEfforts),
+  };
+}
+
+const PREDICTION_DISTANCES: { key: string; label: string; km: number }[] = [
+  { key: "5k", label: "5 km", km: 5 },
+  { key: "10k", label: "10 km", km: 10 },
+  { key: "semi", label: "Semi-marathon", km: 21.0975 },
+  { key: "marathon", label: "Marathon", km: 42.195 },
+];
+
+export type RacePrediction = {
+  key: string;
+  label: string;
+  distanceKm: number;
+  durationMin: number;
+};
+
+/**
+ * Equivalent-performance predictions across standard distances for a given
+ * VDOT, via binary search over the (monotonic) VDOT-vs-duration curve — the
+ * same idea as Daniels' equivalent race performance tables.
+ */
+export function predictRaceTimes(vdot: number): RacePrediction[] {
+  return PREDICTION_DISTANCES.map(({ key, label, km }) => {
+    let lo = km * 2; // ~2:00/km — unrealistically fast lower bound
+    let hi = km * 15; // ~15:00/km — very slow upper bound
+    for (let i = 0; i < 60; i++) {
+      const mid = (lo + hi) / 2;
+      const vdotAtMid = estimateVdot(km, mid);
+      // VDOT decreases as duration grows for a fixed distance.
+      if (vdotAtMid > vdot) lo = mid;
+      else hi = mid;
+    }
+    return { key, label, distanceKm: km, durationMin: (lo + hi) / 2 };
+  });
 }

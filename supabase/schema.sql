@@ -19,6 +19,8 @@ alter table "CAP_races" add column if not exists result_time text;
 alter table "CAP_races" add column if not exists result_rank text;
 alter table "CAP_races" add column if not exists result_feeling smallint;
 alter table "CAP_races" add column if not exists result_notes text;
+alter table "CAP_races" add column if not exists ai_report text;
+alter table "CAP_races" add column if not exists ai_report_generated_at timestamptz;
 
 create table if not exists "CAP_profile" (
   id uuid primary key default '00000000-0000-0000-0000-000000000001',

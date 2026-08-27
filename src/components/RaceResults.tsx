@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Medal, Star, Trophy, X } from "lucide-react";
+import { Loader2, Medal, RefreshCw, Sparkles, Star, Trophy, X } from "lucide-react";
 import { NeoButton } from "@/components/ui/NeoButton";
 import { NeoInput, NeoTextarea } from "@/components/ui/NeoInput";
 import type { Race } from "@/lib/types";
@@ -25,9 +25,30 @@ export function RaceResults({ raceId, race }: { raceId: string; race: Race }) {
     result_notes: race.result_notes,
   });
   const [open, setOpen] = useState(() => !hasAnyResult(current));
+  const [aiReport, setAiReport] = useState(race.ai_report);
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+
+  async function generateReport() {
+    setGeneratingReport(true);
+    setReportError(null);
+
+    const res = await fetch(`/api/races/${raceId}/report`, { method: "POST" });
+
+    setGeneratingReport(false);
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      setReportError(data?.error ?? "Impossible de générer le rapport.");
+      return;
+    }
+
+    const data: { report: string } = await res.json();
+    setAiReport(data.report);
+  }
 
   return (
-    <div>
+    <div className="space-y-3">
       {hasAnyResult(current) ? (
         <button
           type="button"
@@ -71,6 +92,44 @@ export function RaceResults({ raceId, race }: { raceId: string; race: Race }) {
         </NeoButton>
       )}
 
+      {current.result_time ? (
+        <div className="neo-inset p-4">
+          <div className="flex items-center justify-between gap-2 mb-1.5">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-cap-violet uppercase tracking-wide">
+              <Sparkles size={13} strokeWidth={2.5} />
+              Rapport IA
+            </div>
+            {aiReport && !generatingReport ? (
+              <button
+                type="button"
+                onClick={generateReport}
+                className="text-cap-muted hover:text-cap-black"
+                title="Régénérer le rapport"
+                aria-label="Régénérer le rapport"
+              >
+                <RefreshCw size={13} strokeWidth={2.25} />
+              </button>
+            ) : null}
+          </div>
+
+          {generatingReport ? (
+            <div className="flex items-center gap-2 text-sm text-cap-muted">
+              <Loader2 size={14} strokeWidth={2.25} className="animate-spin" />
+              Génération du rapport...
+            </div>
+          ) : aiReport ? (
+            <p className="text-sm text-cap-black whitespace-pre-wrap">{aiReport}</p>
+          ) : (
+            <NeoButton type="button" onClick={generateReport} className="w-full">
+              <Sparkles size={15} strokeWidth={2.25} />
+              Générer le rapport
+            </NeoButton>
+          )}
+
+          {reportError ? <p className="text-sm text-red-600 mt-2">{reportError}</p> : null}
+        </div>
+      ) : null}
+
       {open ? (
         <ResultModal
           raceId={raceId}
@@ -79,6 +138,10 @@ export function RaceResults({ raceId, race }: { raceId: string; race: Race }) {
           onSaved={(updated) => {
             setCurrent(updated);
             setOpen(false);
+            if (updated.result_time) {
+              setAiReport(null);
+              generateReport();
+            }
           }}
         />
       ) : null}

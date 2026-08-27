@@ -1,63 +1,90 @@
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Gauge, Trophy } from "lucide-react";
-import type { LevelIndex } from "@/lib/level";
+import { Dumbbell, Trophy } from "lucide-react";
+import type { LevelIndex, LevelIndexResult } from "@/lib/level";
+import { predictRaceTimes } from "@/lib/level";
 import { formatDistance } from "@/lib/format";
 import { formatMinutesToDuration } from "@/lib/pace";
 
-export function LevelIndexCard({ levelIndex }: { levelIndex: LevelIndex | null }) {
-  if (!levelIndex) {
+function EstimateBlock({
+  title,
+  icon,
+  estimate,
+  emptyLabel,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  estimate: LevelIndex | null;
+  emptyLabel: string;
+}) {
+  return (
+    <div className="flex-1 min-w-[220px]">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="neo-sm w-9 h-9 flex items-center justify-center text-cap-violet shrink-0">
+          {icon}
+        </div>
+        <p className="text-xs font-bold uppercase tracking-wide text-cap-muted">{title}</p>
+      </div>
+
+      {estimate ? (
+        <>
+          <p className="text-3xl font-extrabold text-cap-black leading-none">
+            {estimate.score}
+            <span className="text-sm font-semibold text-cap-muted">/1000</span>
+          </p>
+          <p className="text-xs text-cap-muted mt-1.5">
+            {estimate.effort.label} du{" "}
+            {format(new Date(`${estimate.effort.date}T00:00:00`), "d MMM yyyy", {
+              locale: fr,
+            })}{" "}
+            — {formatDistance(estimate.effort.distanceKm)} en{" "}
+            {formatMinutesToDuration(estimate.effort.durationMin)}
+          </p>
+
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-3 text-xs">
+            {predictRaceTimes(estimate.vdot).map((p) => (
+              <div key={p.key} className="flex items-center justify-between neo-inset px-2.5 py-1.5">
+                <span className="text-cap-muted">{p.label}</span>
+                <span className="font-semibold text-cap-black">
+                  {formatMinutesToDuration(p.durationMin)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <p className="text-sm text-cap-muted">{emptyLabel}</p>
+      )}
+    </div>
+  );
+}
+
+export function LevelIndexCard({ levelIndex }: { levelIndex: LevelIndexResult }) {
+  if (!levelIndex.training && !levelIndex.race) {
     return (
-      <div className="neo p-6 flex items-center gap-4">
-        <div className="neo-sm w-12 h-12 flex items-center justify-center text-cap-muted shrink-0">
-          <Gauge size={22} strokeWidth={2} />
-        </div>
-        <div>
-          <p className="text-sm font-bold uppercase tracking-wide text-cap-black">
-            Indice de niveau
-          </p>
-          <p className="text-sm text-cap-muted mt-0.5">
-            Pas encore assez de données — ajoute un résultat de course ou une sortie
-            d&apos;au moins 3 km (distance + temps) dans l&apos;historique.
-          </p>
-        </div>
+      <div className="neo p-6 text-sm text-cap-muted">
+        Pas encore assez de données pour un indice de niveau — ajoute un résultat de
+        course ou une sortie d&apos;au moins 3 km (distance + temps) dans
+        l&apos;historique.
       </div>
     );
   }
 
-  const effortDate = format(new Date(`${levelIndex.effort.date}T00:00:00`), "d MMM yyyy", {
-    locale: fr,
-  });
-
   return (
-    <div className="neo p-6 flex flex-col sm:flex-row sm:items-center gap-4">
-      <div className="flex items-center gap-4">
-        <div className="neo-sm w-16 h-16 flex items-center justify-center text-cap-violet shrink-0">
-          {levelIndex.fromRace ? (
-            <Trophy size={26} strokeWidth={2} />
-          ) : (
-            <Gauge size={26} strokeWidth={2} />
-          )}
-        </div>
-        <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-cap-muted">
-            Indice de niveau
-          </p>
-          <p className="text-4xl font-extrabold text-cap-black leading-none mt-1">
-            {levelIndex.score}
-            <span className="text-base font-semibold text-cap-muted">/1000</span>
-          </p>
-        </div>
-      </div>
-      <p className="text-xs text-cap-muted sm:ml-auto sm:text-right sm:max-w-[220px]">
-        Basé sur {levelIndex.fromRace ? "la course" : "la sortie"}{" "}
-        <span className="font-semibold text-cap-black">
-          {levelIndex.effort.label}
-        </span>{" "}
-        du {effortDate} — {formatDistance(levelIndex.effort.distanceKm)} en{" "}
-        {formatMinutesToDuration(levelIndex.effort.durationMin)}.
-        {!levelIndex.fromRace ? " (estimation basse — pas un effort maximal)" : ""}
-      </p>
+    <div className="neo p-6 flex flex-col sm:flex-row gap-6">
+      <EstimateBlock
+        title="Estimation course"
+        icon={<Trophy size={16} strokeWidth={2} />}
+        estimate={levelIndex.race}
+        emptyLabel="Aucune course chronométrée enregistrée pour l'instant."
+      />
+      <div className="hidden sm:block w-px bg-black/10" />
+      <EstimateBlock
+        title="Estimation entraînement"
+        icon={<Dumbbell size={16} strokeWidth={2} />}
+        estimate={levelIndex.training}
+        emptyLabel="Aucune sortie exploitable (≥ 3 km, distance + temps) pour l'instant."
+      />
     </div>
   );
 }
